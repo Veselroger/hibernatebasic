@@ -5,6 +5,7 @@
 - [Java Application](#application)
 - [Persistence Unit (persistence.xml)](#persistence)
 - [Логирование](#logging)
+- [Entity (сущности)](#entity)
 
 ## [↑](#Home) <a name="java"></a> Java Persistence API (JPA)
 Основная потребность современных программ - обработка данных. Как и у всего, у данных есть свой жизненный цикл. И уже давно требуется, чтобы данные жили дольше чем процесс программы. Такое сохранение данных называется **"Persistence"**.
@@ -66,7 +67,7 @@ dependencies {
 
 ![](./img/2_GradleToolbar.png)
 
-Выполним задачу "run" (указана стрелкой на скриншоте).
+Выполним задачу **"run"** (указана стрелкой на скриншоте).
 JetBrains IDEA за нас тогда выполнит команду ``gradle run``. Таким образом мы можем проверить, что наше приложение работает и готово к свершениям.
 
 
@@ -110,6 +111,7 @@ implementation 'com.h2database:h2:1.4.200'
 	<property name="javax.persistence.jdbc.user" value="sa"/>
 	<property name="javax.persistence.jdbc.password" value="sa"/>
 	<property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
+    <property name="javax.persistence.schema-generation.database.action" value="create"/>
 </properties>
 ```
 Чтобы проверить, что оно всё работает, добавим код, инициализирующий доступ к настроенному Persistence Unit.
@@ -129,5 +131,104 @@ public static void main(String[] args) {
 ## [↑](#Home) <a name="logging"></a> Логирование
 Прежде чем мы начнём настроим логирование.
 Для этого нам понадобится библиотека **[log4j](https://logging.apache.org/log4j/2.x/maven-artifacts.html)**.
+Согласно документации log4j добавим две новые зависимости:
+```
+implementation 'org.apache.logging.log4j:log4j-api:2.12.1'
+implementation 'org.apache.logging.log4j:log4j-core:2.12.1'
+```
+Далее остаётся настроить log4j, например при помощи [Configuration with XML](https://logging.apache.org/log4j/2.x/manual/configuration.html#XML).
+Для этого создадим файл **log4j2.xml** в каталоге **src/main/resources**.
 
+По примеру "[Hibernate 5 + Log4j 2 configuration example](https://www.boraji.com/hibernate-5-log4j-2-configuration-example)" напишем:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+	<Appenders>
+		<!-- Console Appender -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MMM-dd HH:mm:ss a} [%t] %-5level %logger{36} - %msg%n" />
+        </Console>
+    </Appenders>
+    <Loggers>
+        <!-- Log everything in hibernate -->
+        <Logger name="org.hibernate" level="info" additivity="false">
+            <AppenderRef ref="Console" />
+        </Logger>
+        <!-- Log SQL statements -->
+        <Logger name="org.hibernate.SQL" level="debug" additivity="false">
+            <AppenderRef ref="Console" />
+        </Logger>
+        <!-- Log JDBC bind parameters -->
+        <Logger name="org.hibernate.type.descriptor.sql" level="trace" additivity="false">
+            <AppenderRef ref="Console" />
+        </Logger>
+        <Root level="error">
+            <AppenderRef ref="Console" />
+        </Root>
+    </Loggers>
+</Configuration>
+```
+Теперь логирование будет идти через **log4j**.
+Если мы снова выполним Gradle task запуска под названием **"run"** (как мы делали ранее), то мы увидим, что всё логирование идёт на консоль в указанном нами формате.
+
+
+## [↑](#Home) <a name="entity"></a> Entity (сущности)
+Итак, предварительные действия выполнены. Пора приступить к погружению в мир JPA.
+**Entity** или сущности - основа мира JPA. В спецификации JPA этой теме посвящён раздел **"Chapter 2 Entities"**.
+
+Спецификация говорит, то Entity - это некий сохраняемый объект доменной области.
+Например, для доменной области обучения учеников объектом доменной области может быть обучающий учеников профессор, выраженный Java классом **Professor**.
+Кроме того, все сущности должны быть анотированы как **@Entity**.
+Также к сущностям предъявляются следующие требования:
+- должен быть конструктор без аргументов (при этом можно иметь и другие конструкторы)
+- сущность выражена верхнеуровневым классом (т.е. не вложенным)
+- класс не должен быть final и не должны быть final переменные/методы
+
+И ещё одно важное требование - должен быть указан идентификатор сущности. Данный идентификатор - это **primary key** (первичный ключ) в мире баз данных. Такой идентификатор выражается анотацией **@Id**.
+
+Говоря про анотацию **@Id** стоит помнить про то, что по умолчанию именно она влияет на то, как JPA провайдер (в нашем случае Hibernate) работает с сущностями.
+Существует два способа:
+- **property access** (через геттер и сеттер)
+- **field access** (напрямую через поля при помощи reflection)
+
+Если аннотацию **@Id** поставить над геттером - будет property acсess, а если над полем - field access. Всё логично. Кроме того, на этот факт можно повлиять при помощи аннотации "[@Access](https://docs.jboss.org/hibernate/orm/5.4/userguide/html_single/Hibernate_User_Guide.html#access)".
+
+И прежде чем начать, хочется немного упростить себе жизнь. Java иногда имеет так называемый **boilerplate code** - это однотипный код, который приходится писать ради какой-нибудь простой цели. Например, яркий пример - геттеры и сеттеры. Но от этого можно избавиться, подключив к проекту библиотеку **[Lombok](https://projectlombok.org/setup/gradle)**:
+```
+compileOnly 'org.projectlombok:lombok:1.18.10'
+annotationProcessor 'org.projectlombok:lombok:1.18.10'
+```
+
+Теперь добавим новую сущность **Professor**:
+```java
+@Entity
+@Data // Геттер + Сеттер
+@NoArgsConstructor	// Для JPA
+@AllArgsConstructor	// Для удобства
+public class Professor {
+    @Id
+    private Long id;
+
+    private String firstName;
+    private String lastName;
+}
+```
+Далее укажем нашу сущность в persistence.xml, т.к. мы хотим, чтобы Hibernate увидел сущность, которая не в root jar архива (т.к. запуск из IDE выполняется без сборки jar):
+```xml
+<provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+<class>hibernatebasic.model.Professor</class>
+```
+Осталось для пробы добавить код в main метод.
+Необходимо добавить код, который должен сохранить нашу сущность в БД:
+```java
+// Create new entity
+EntityManager em = factory.createEntityManager();
+em.getTransaction().begin();
+Professor professor = new Professor(1L, "f", "f");
+em.persist(professor);
+em.getTransaction().commit();
+```
+Снова выполним gradle task с именем **run** и убедимся, что наша сущность работает:
+
+![](./img/3_HibernatePersistLog.png)
 
