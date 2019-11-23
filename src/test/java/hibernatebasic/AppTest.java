@@ -3,12 +3,36 @@
  */
 package hibernatebasic;
 
+import hibernatebasic.model.Professor;
+import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.*;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+
+import static org.junit.Assert.assertTrue;
 
 public class AppTest {
-    @Test public void testAppHasAGreeting() {
-        App classUnderTest = new App();
-        assertNotNull("app should have a greeting", classUnderTest.getGreeting());
+    private final static String UNIT_NAME = "SimpleUnit";
+    private static EntityManagerFactory EM_FACTORY;
+
+    @Before
+    public void init() {
+        EM_FACTORY = Persistence.createEntityManagerFactory(UNIT_NAME);
+    }
+
+    @Test
+    public void shouldOpenEmFactory() {
+        assertTrue(EM_FACTORY.isOpen());
+    }
+
+    @Test
+    public void shouldPersistEntity() {
+        Professor entity = new Professor(1L, "John", "Doe");
+        EntityManager em = EM_FACTORY.createEntityManager();
+        em.getTransaction().begin();
+        em.persist(entity);
+        em.getTransaction().commit();
     }
 }

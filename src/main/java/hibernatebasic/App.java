@@ -3,26 +3,12 @@
  */
 package hibernatebasic;
 
-import hibernatebasic.model.Professor;
-
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
-
 public class App {
     public String getGreeting() {
         return "Hello world.";
     }
 
     public static void main(String[] args) {
-        String unitName = "SimpleUnit";
-        EntityManagerFactory factory = Persistence.createEntityManagerFactory(unitName);
-        // Create new entity
-        EntityManager em = factory.createEntityManager();
-        em.getTransaction().begin();
-        Professor professor = new Professor(1L, "f", "f");
-        em.persist(professor);
-        em.getTransaction().commit();
         System.out.println(new App().getGreeting());
     }
 }
