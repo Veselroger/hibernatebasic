@@ -8,6 +8,7 @@
 - [Domain object](#domainobject)
 - [Entity (сущности)](#entity)
 - [ID Generation](#id)
+- [Mapping](#mapping)
 
 
 ## [↑](#Home) <a name="java"></a> Java Persistence API (JPA)
@@ -230,7 +231,7 @@ public class Professor {
 
 
 ## [↑](#Home) <a name="entity"></a> Entity (сущности)
-Итак, предварительные действия выполнены. Пора приступить к погружению в мир JPA.
+Итак, предварительные действия выполнены. Пора погрузиться в мир JPA.
 **Entity** или сущности - основа мира JPA.
 В спецификации JPA этой теме посвящён раздел **"Chapter 2 Entities"**.
 
@@ -315,3 +316,116 @@ public class Professor {
     private Long id;
 ```
 Теперь необходимо разобраться, как этот ID генерировать автоматически.
+Для того, чтобы ID генерировался автоматически достаточно к нему добавить аннотацию.
+Аннотация **@GeneratedValue** указывает, что Value будет сгенерировано:
+```java
+@Id
+@GeneratedValue
+private Long id;
+```
+По умолчанию Hibernate автоматически выбирает принцип или стратегию, по которой будет получен ID.
+Если мы хотим указать стратегию сами, нужно указать нужный **GenerationType**.
+Существуют следующий стратегии:
+- GenerationType.AUTO - JPA Provider сам выберет подходящую стратегию (на основе БД)
+- GenerationType.SEQUENCE - JPA Provider будет использовать Database Sequence
+- GenerationType.IDENTITY - JPA Provider будет использовать отдельный столбец для ID
+- GenerationType.TABLE - JPA Provider будет использовать отдельную таблицу
+
+Они разные и у всех есть свои плюсы и минусы.
+
+Например, **GenerationType.TABLE** является устаревшим и самым не оптимальным выбором. Данная стратегия использует отдельную таблицу для хранения ID. Из-за необходимости поддерживать корректную работу нескольких потоков страдает производительность. Подробнее можно прочитать здесь:
+**[Why you should never use the TABLE identifier generator with JPA and Hibernate](https://vladmihalcea.com/why-you-should-never-use-the-table-identifier-generator-with-jpa-and-hibernate/)**
+
+Стратегия **GenerationType.AUTO** тоже не очень хорошим выбором. При этой стратегии JPA Provider сам выбирает стратегию на основе того, какая БД используется. И этот выбор не всегда является правильным. Например, Hibernate JPA Provider версии 5 на базах MySQL не имея возможности использовать SEQUENCE вместо IDENTITY выбирал TABLE, а это плохо, как мы видели ранее.
+Подробнее можно прочитать здесь:
+**[Why should not use the AUTO JPA GenerationType with MySQL and Hibernate](https://vladmihalcea.com/why-should-not-use-the-auto-jpa-generationtype-with-mysql-and-hibernate/)**
+
+Стратегия **GenerationType.IDENTITY** использует автоинкрементируемый столбец в таблице сущности. Особенность этого автоинкремента заключается в том, что инкрементация значения выполняется вне текущей транзакции, поэтому мы не можем узнать значения до выполнения INSERT выражения. Это приводит к тому, что Hibernate отключает пакетное выполнение SQL запросов (JDBC batch support).
+Подробнее читать здесь:
+**[Hibernate disabled insert batching when using an identity identifier generator](https://stackoverflow.com/questions/27697810/hibernate-disabled-insert-batching-when-using-an-identity-identifier-generator)**
+
+Стратегия **GenerationType.SEQUENCE** является самой оптимальной. Она использует Database Sequence. Пример использоания:
+```java
+public class Professor {
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "prof_gen")
+    @SequenceGenerator(name = "prof_gen", sequenceName = "prof_seq")
+    private Long id;
+```
+Теперь при persist нельзя передавать ID, иначе получим ошибку:
+```PersistentObjectException: detached entity passed to persist```
+
+Теперь, добавим в класс Professor ещё один конструктор:
+```java
+public Professor(String firstName, String lastName) {
+	this.firstName = firstName;
+	this.lastName = lastName;
+}
+```
+И в нашем тесте **shouldPersistEntity** сделаем вызов другого конструктора:
+```java
+Professor entity = new Professor("John", "Doe");
+em.persist(entity);
+```
+Теперь при выполнении теста мы увидим:
+
+![](./img/5_SequenceGenerator.png)
+
+Интересной особенностью является то, что Hibernate чтобы постоянно не запрашивать следующий номер последовательности получается 2 следующих числа последовательности. Например, если шаг для sequence равен 50, то Hibernate получит значения 1 и 50. Таким образом на первые 50 новых значений будет сделано всего 2 запроса sequence.
+
+Подробнее про маппинг первичного ключа можно прочитать так же и здесь:
+**[5 Primary Key Mappings for JPA and Hibernate Every Developer Should Know](https://thoughts-on-java.org/primary-key-mappings-jpa-hibernate/)**
+
+Кроме этого, полезное видео: **[Hibernate Tip: How does Hibernate’s native ID generator work?](https://www.youtube.com/watch?v=QfuAMZLSvwo)**.
+
+
+## [↑](#Home) <a name="mapping"></a> Mapping
+Как мы уже ранее поняли, JPA - это про отображение Java объектов на базу данных и наоборот. Это называется **Object-Relational Mapping**.
+Пора чуть подробнее разобраться с этим самым Mapping.
+
+Во-первых, классы которые являются сущностями (т.е. аннотированы @Entity) отображаются на таблицы в БД. Без дополнительных указаний JPA Provider (например, Hibernate) отобразит сущность на таблицу с таким же названием. Но этим можно управлять, указав аннотацию **@Table**:
+```java
+@Data // Геттер + Сеттер
+@NoArgsConstructor // Для JPA
+@AllArgsConstructor
+@Entity
+@Table(name = "PROFESSOR", schema = "UNIVERSITY")
+public class Professor {
+```
+
+Говоря про маппинг таблиц стоит не забывать про то, что в Java у нас есть наследование. А следовательно, его надо как-то отображать на мир баз данных. Проблемы здесь добавляет то, что в мире реляционных баз данных нет понятия наследования. Поэтому, могут быть разные способы (стратегии), при помощи которых можно отобразить наследования. Для этого есть аннотация **@Inheritance**.
+По умолчанию, если ничего не указано, то для Entity будет указана одноимённая таблица. Что будет совпадать со следующим:
+```java
+@Entity
+@Table(name = "PROFESSOR", schema = "UNIVERSITY")
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+public class Professor {
+```
+Более подробно про стратегии наследования можно прочитать здесь:
+- [Inheritance Strategies with JPA and Hibernate – The Complete Guide](https://thoughts-on-java.org/complete-guide-inheritance-strategies-jpa-hibernate/)
+- [Mapping class inheritance in Hibernate 5](https://marcin-chwedczuk.github.io/mapping-inheritance-in-hibernate)
+
+Если мы смогли соотнести таблицу с сущностью, то далее нужно соотнести поля сущности и столбцы, то есть колонки. По умолчанию JPA Provider будет соотносить поля с такими же по названию колонками, но на это можно повлиять аннотацией **@Column**:
+```java
+@Column(name = "FIRST_NAME")
+private String firstName;
+```
+Интересно, что аннотация @Column имеет возможность указать различные ограничения. Но стоит помнить, что эти ограчения будут работать только тогда, когда по аннотациям JPA Provider будет создавать структуру БД. Поэтому лучше воспользоваться реализацией **BeanValidation specification (JSR 303)**. Для этого можно воспользоваться реализацией этой спецификации. Например: **hibernate-validator**. Однако, аннотация @Column имеет полезные свойства, вроде insertable и updatable.
+Подробнее можно прочитать здесь:
+- [Hibernate Tips: What’s the difference between @Column(nullable = false) and @NotNull](https://thoughts-on-java.org/hibernate-tips-whats-the-difference-between-column-nullable-false-and-notnull/)
+- [Difference Between @NotNull, @NotEmpty, and @NotBlank Constraints in Bean Validation](https://www.baeldung.com/java-bean-validation-not-null-empty-blank)
+
+По умолчанию JPA Provider (например, Hibernate) умеет правильно выполнять "маппинг" различных Java типов на типы в БД. Но есть некоторые типы, которые не так очевидны.
+
+Например, **Enum** в Java можно по-разному соотнести с колонками в БД. По умолчанию, Hibernate сохраняет Enum в БД как число, соответствующее **ordinal value**. На это можно повлиять при помощи аннотации **@Enumerated**.
+Подробнее описано в материалах c **THOUGHTS ON JAVA**:
+- [Hibernate Tips: How to map an Enum to a database column](https://thoughts-on-java.org/hibernate-tips-map-enum-database-column/)
+- [Enum Mappings with Hibernate – The Complete Guide](https://thoughts-on-java.org/hibernate-enum-mappings/)
+- [The best way to map an Enum Type with JPA and Hibernate](https://vladmihalcea.com/the-best-way-to-map-an-enum-type-with-jpa-and-hibernate/)
+
+Другим специфическим типом данных являются даты. Связано это с тем, что дату можно представить как дату (DATE), время (TIME) или вместе (TIMESTAMP). В JPA для уточнения этой информации есть аннотацией **@Temporal**. Данная аннотация применима только к Java типам **java.util.Date** и **java.util.Calendar**.
+Типы из **Date and Time API** "мапятся" без **@Temporal**.
+Подробнее можно прочитать здесь:
+- [Date and Time Mappings with Hibernate and JPA](https://thoughts-on-java.org/hibernate-jpa-date-and-time/)
+- [How To Map The Date And Time API with JPA 2.2](https://thoughts-on-java.org/map-date-time-api-jpa-2-2/)
+- [How to persist LocalDate and LocalDateTime with JPA 2.1](https://thoughts-on-java.org/persist-localdate-localdatetime-jpa/)

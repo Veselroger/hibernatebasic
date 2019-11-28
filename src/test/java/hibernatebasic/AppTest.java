@@ -29,10 +29,11 @@ public class AppTest {
 
     @Test
     public void shouldPersistEntity() {
-        Professor entity = new Professor(1L, "John", "Doe");
         EntityManager em = EM_FACTORY.createEntityManager();
         em.getTransaction().begin();
+        Professor entity = new Professor("John", "Doe");
         em.persist(entity);
         em.getTransaction().commit();
+        em.close();
     }
 }
