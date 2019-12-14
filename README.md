@@ -9,6 +9,9 @@
 - [Entity (сущности)](#entity)
 - [ID Generation](#id)
 - [Mapping](#mapping)
+- [Lifecycle](#lifecycle)
+- [Associations](#associations)
+    - [One-to-Many & Many-to-One](#onetomany)
 
 
 ## [↑](#Home) <a name="java"></a> Java Persistence API (JPA)
@@ -429,3 +432,124 @@ private String firstName;
 - [Date and Time Mappings with Hibernate and JPA](https://thoughts-on-java.org/hibernate-jpa-date-and-time/)
 - [How To Map The Date And Time API with JPA 2.2](https://thoughts-on-java.org/map-date-time-api-jpa-2-2/)
 - [How to persist LocalDate and LocalDateTime with JPA 2.1](https://thoughts-on-java.org/persist-localdate-localdatetime-jpa/)
+
+
+## [↑](#Home) <a name="lifecycle"></a> Lifecycle
+Очень важным вопросом является жизненный цикл (lifecycle).
+Жизненный цикл описан в спецификации в разделе **"3.2 Entity Instance’s Life Cycle"**. Про lifecycle можно так же прочитать непосредственно у Hibernate: [5. Persistence Context](https://docs.jboss.org/hibernate/orm/5.4/userguide/html_single/Hibernate_User_Guide.html#pc).
+Итак, путь любого instance сущности начинается с состояния **new** (Hibernate называет это состояние **transient**). На этот момент про instance никто не знает:
+```java
+@Test
+public void lifecycleTest() {
+	// 1. New Entity instance
+	Professor entity = new Professor("John", "Doe");
+```
+
+JPA Provider начинает отслеживать любые изменения в instance сущности только тогда, когда этот instance находится в некой зоне видимости или владении, которая называется Persistence Context. Это своего рода такая закрытая кухня, где происходит вся магия. Для удобства работы с Persistence Context есть своего рода посредник (официант), который называется Entity Manager:
+```java
+// 2. Get access to the persistence context
+EntityManager em = EM_FACTORY.createEntityManager();
+```
+
+Теперь нам нужно попросить EntityManager сохранить в Persistence Context инстанц сущности. На этом этапе никакого сохранения никуда больше не происходит. Persistence Context называют ещё кэшем первого уровня, поэтому можно ещё воспринимать это как кэширование:
+```java
+// 3. Persist the entity instance
+em.persist(entity);
+```
+После этого instance сущности становится **persisted** и любые изменения, которые мы сделаем в данной сущности, будут сохранены. Перед сохранением JPA Provider проверит, не было ли изменений. Такая проверка называется **Dirty-check**.
+
+Теперь нам осталось только создать транзакцию - своего рода сеанс общения с некоторым источником данных:
+```java
+// 4. Commit transaction
+em.getTransaction().begin();
+em.getTransaction().commit();
+```
+После этого мы можем завершить работу с Persistence Context:
+```java
+// 5. Close EntityManager = End session with Context
+em.close();
+```
+
+Далее мы можем начать работу с Persistence Context в новом Entity Manager:
+```java
+// 6. New session
+em = EM_FACTORY.createEntityManager();
+em.persist(entity);
+```
+Данный код приведёт к ошибке: ```detached entity passed to persist```. Потому что закрытие сеанса работы с Persistence Context (т.е. закрытие Entity Manager'а) приводит к тому, что все находящиеся в контексте инстансы становятся detached. Потому что их Persistence Context закрывается тоже.
+
+Чтобы получить снова persisted инстанс мы можем сделать 2 вещи:
+- Выполнить поиск сущности по ID:
+```java
+Professor entity2 = em.find(Professor.class, 1L);
+```
+- Выполнить мерж изменений:
+```java
+Professor entity2 = em.merge(entity);
+```
+Интересно, что в этом случае entity так и останется detached, а entity2 будет persisted.
+
+Так же JPA позволяет удалить сущность при помощи метода **em.remove**.
+Подробнее можно посмотреть в данном видео:
+- [JPA vs Hibernate : The difference between save, persist, merge and update](https://www.youtube.com/watch?v=SH29O-bcQlc&t=453s)
+
+По данной теме важно так же прочитать статью: [How do find and getReference EntityManager methods work when using JPA and Hibernate](https://vladmihalcea.com/entitymanager-find-getreference-jpa/)
+
+Таким образом жизненный цикл можно отобразить следующим образом:
+
+![](./img/6_Lifecycle.png)
+
+
+## [↑](#Home) <a name="associations"></a> Associations
+ORM - это про связи сущностей с другими сущностями.
+Таким образом, эти связи нужно как-то указывать. И в этом стоит разбираться.
+
+### [↑](#Home) <a name="onetomany"></a> **One-to-Many** & **Many-to-One**
+Пожалуй, самые распространённые ассоциации - **One-to-Many** и **Many-to-One**.
+Начнём с того, что добавим новую сущность - курс, который ведёт преподаватель:
+```java
+@Data // Геттер + Сеттер
+@NoArgsConstructor // Для JPA
+@AllArgsConstructor
+@Entity
+public class Course {
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    private Long id;
+
+    private String title;
+
+    private Professor professor;
+
+    public Course(String title) {
+        this.title = title;
+    }
+}
+```
+Кроме того, на забудем добавить её в объявление persistence-unit.
+
+С ассоциациями работа в своей основе не такая сложная.
+В сущности Cource у нас указание, что Many курсов могут отновиться к одному профессору:
+```java
+@ManyToOne private Professor professor;
+```
+Далее идём в сущность профессора и говорим, что каждый один профессор относится к группе курсов:
+```java
+@OneToMany private List<Course> courses;
+```
+
+Таким образом у нас появились **Unidirectional** связи, то есть однонаправленные.
+Кроме того, такие вот атрибуты сущностей, которые участвуют в связях, если нужно изменить их имя, используют аннотации не **@Column**, а **@JoinColumn**.
+
+Чтобы связь стала двунаправленной необходимо для аннотации **@OneToMany** указать имя атрибута на другой стороне, по которому устанавливается связь и из которого будут получены все необходимые данные. Например:
+```java
+@OneToMany(mappedBy = "professor")
+private List<Course> courses;
+```
+Это очень важно, т.к. помогает Hibernate не делать лишних действий, которые скажутся на производительности.
+По теме Many-to-One и One-to-many рекомендуются есть отличные материалы:
+- [Hibernate Tip: How to Map a Bidirectional Many-to-One Association](https://www.youtube.com/watch?v=cI4jYr_iv3Y)
+- [Best Practices for Many-To-One and One-To-Many Association Mappings](https://www.youtube.com/watch?v=tciSOIQngig)
+- [Ultimate Guide – Association Mappings with JPA and Hibernate](https://thoughts-on-java.org/ultimate-guide-association-mappings-jpa-hibernate/)
+
+

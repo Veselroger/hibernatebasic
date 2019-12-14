@@ -36,4 +36,23 @@ public class AppTest {
         em.getTransaction().commit();
         em.close();
     }
+
+    @Test
+    public void lifecycleTest() {
+        // 1. New Entity instance
+        Professor entity = new Professor("John", "Doe");
+        // 2. Get access to the persistence context
+        EntityManager em = EM_FACTORY.createEntityManager();
+        // 3. Persist the entity instance
+        em.persist(entity);
+        // 4. Commit transaction
+        em.getTransaction().begin();
+        em.getTransaction().commit();
+        // 5. Close EntityManager = End session with Context
+        em.close();
+        // 6. New session
+        em = EM_FACTORY.createEntityManager();
+        // Get Lazy Proxy
+        Professor proxy = em.getReference(Professor.class, 1L);
+    }
 }

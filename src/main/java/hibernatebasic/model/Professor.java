@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data // Геттер + Сеттер
 @NoArgsConstructor // Для JPA
@@ -22,6 +24,9 @@ public class Professor {
     private String firstName;
 
     private String lastName;
+
+    @OneToMany(mappedBy = "professor")
+    private List<Course> courses;
 
     public Professor(String firstName, String lastName) {
         this.firstName = firstName;

@@ -7,6 +7,7 @@
         <description>Simple Persistence Unit</description>
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         <class>hibernatebasic.model.Professor</class>
+        <class>hibernatebasic.model.Course</class>
         <properties>
             <property name="javax.persistence.jdbc.driver" value="org.h2.Driver"/>
             <property name="javax.persistence.jdbc.url" value="jdbc:h2:mem:test"/>
