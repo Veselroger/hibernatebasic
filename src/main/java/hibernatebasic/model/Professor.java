@@ -26,10 +26,11 @@ public class Professor {
     private String lastName;
 
     @OneToMany(mappedBy = "professor")
-    private List<Course> courses;
+    private List<Course> courses = new ArrayList<>();
 
     public Professor(String firstName, String lastName) {
         this.firstName = firstName;
         this.lastName = lastName;
     }
+
 }

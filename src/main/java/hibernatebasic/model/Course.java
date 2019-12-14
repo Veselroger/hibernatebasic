@@ -23,4 +23,14 @@ public class Course {
     public Course(String title) {
         this.title = title;
     }
+
+    public void setProfessor(Professor professor) {
+        if (this.professor != null) {
+            this.professor = null;
+        }
+        this.professor = professor;
+        if (this.professor != null) {
+            professor.getCourses().add(this);
+        }
+    }
 }

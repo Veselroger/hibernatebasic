@@ -3,6 +3,7 @@
  */
 package hibernatebasic;
 
+import hibernatebasic.model.Course;
 import hibernatebasic.model.Professor;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,5 +55,18 @@ public class AppTest {
         em = EM_FACTORY.createEntityManager();
         // Get Lazy Proxy
         Professor proxy = em.getReference(Professor.class, 1L);
+    }
+
+    @Test
+    public void shouldPersistProfessorCourse() {
+        EntityManager em = EM_FACTORY.createEntityManager();
+        em.getTransaction().begin();
+        Professor professor = new Professor("John", "Doe");
+        Course course = new Course("Math");
+        course.setProfessor(professor);
+        em.persist(professor);
+        em.persist(course);
+        em.getTransaction().commit();
+        em.close();
     }
 }
