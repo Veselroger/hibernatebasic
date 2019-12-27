@@ -19,6 +19,11 @@
         <Logger name="org.hibernate.type.descriptor.sql" level="trace" additivity="false">
             <AppenderRef ref="Console" />
         </Logger>
+        <!-- Dirty check -->
+        <Logger name="org.hibernate.event.internal.AbstractFlushingEventListener" level="trace" additivity="false">
+            <AppenderRef ref="Console" />
+        </Logger>
+
         <Root level="error">
             <AppenderRef ref="Console" />
         </Root>

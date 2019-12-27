@@ -1,10 +1,12 @@
-package hibernatebasic.model;
+package app.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data // Геттер + Сеттер
 @NoArgsConstructor // Для JPA
@@ -17,20 +19,15 @@ public class Course {
 
     private String title;
 
-    @ManyToOne
-    private Professor professor;
+    @OneToMany(mappedBy = "course")
+    private List<Student> students = new ArrayList<>();
 
     public Course(String title) {
         this.title = title;
     }
 
-    public void setProfessor(Professor professor) {
-        if (this.professor != null) {
-            this.professor = null;
-        }
-        this.professor = professor;
-        if (this.professor != null) {
-            professor.getCourses().add(this);
-        }
+    public void addSdudent(Student student) {
+        this.students.add(student);
+        student.setCourse(this);
     }
 }
