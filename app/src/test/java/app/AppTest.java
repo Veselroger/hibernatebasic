@@ -6,12 +6,15 @@ package app;
 import app.model.Account;
 import app.model.Student;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
+import javax.persistence.TypedQuery;
+import java.util.List;
 
 public class AppTest {
     private EntityManagerFactory entityManagerFactory;
@@ -40,6 +43,11 @@ public class AppTest {
         // 3. Commit Transaction
         em.getTransaction().begin();
         em.getTransaction().commit();
+        // 4. JPQL
+        TypedQuery<Student> studentQuery;
+        studentQuery = em.createQuery("SELECT s FROM Student s", Student.class);
+        List<Student> resultList = studentQuery.getResultList();
+        Assert.assertEquals(1, resultList.size());
     }
 
 

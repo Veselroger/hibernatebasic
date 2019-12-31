@@ -777,3 +777,27 @@ private List< Student> students = new ArrayList<>();
 - [Hibernate Tip: Many-to-Many Association with additional Attributes](https://thoughts-on-java.org/hibernate-tip-many-to-many-association-with-additional-attributes/)
 - [The best way to use the @ManyToMany annotation with JPA and Hibernate](https://vladmihalcea.com/the-best-way-to-use-the-manytomany-annotation-with-jpa-and-hibernate/)
 
+
+### [↑](#Home) <a name="jpql"></a> **JPQL**
+**JPA** - это не только про автоматический маппинг. Но это ещё и про запросы.
+Во-первых, JPA позволяет SQL Query, они же Native Query. Подробнее про это можно прочитать в материале: [Native Queries – How to call native SQL queries with JPA & Hibernate](https://thoughts-on-java.org/jpa-native-queries/). Кроме того будет полезно прочитать про механизм AUTOFLUSH: [How does AUTO flush strategy work in JPA and Hibernate](https://vladmihalcea.com/how-does-the-auto-flush-work-in-jpa-and-hibernate/).
+
+JPA предоставляет свой язык запросов - Java Persistence Query Language, JPQL.
+Это своего рода симбиоз JPA и SQL.
+
+Например, в тест сохранения сущности можем добавить проверку существования сущности через JPQL:
+```java
+// 4. JPQL
+TypedQuery<Student> studentQuery;
+studentQuery = em.createQuery("SELECT s FROM Student s", Student.class);
+List<Student> resultList = studentQuery.getResultList();
+Assert.assertEquals(1, resultList.size());
+```
+
+Кроме того, JPQL позволяет использовать различные JOIN'ы, о чём подробнее можно прочитать в обзоре: [Hibernate Tips: What’s the Difference between JOIN, LEFT JOIN and JOIN FETCH](https://thoughts-on-java.org/hibernate-tips-difference-join-left-join-fetch-join/).
+
+Есть отличный материал на тему JPQL:
+- [Ultimate Guide to JPQL Queries with JPA and Hibernate](https://thoughts-on-java.org/jpql/)
+- [Using the Optimal Query Approach and Projection for JPA and Hibernate](https://thoughts-on-java.org/optimal-query-and-projection-jpa-hibernate/)
+- [Hibernate Tips: How to downcast entities in JPQL queries](https://thoughts-on-java.org/hibernate-tips-downcast-entities-jpql-queries/)
+- [Hibernate Tips: How to use pagination with JPQL](https://thoughts-on-java.org/hibernate-tips-use-pagination-jpql/)
